@@ -1,0 +1,48 @@
+{
+  "name": "ExecSuite Smoke Webhook",
+  "description": "Trigger FO_CHECKIN, COO_DIGEST, MEAL_PLAN webhooks in dry-run mode.",
+  "triggers": [
+    {
+      "type": "webhook",
+      "label": "Trigger Smoke",
+      "payload": {
+        "event": "{{bundle.event}}",
+        "dryRun": true
+      }
+    }
+  ],
+  "variables": [
+    { "key": "FO_CHECKIN_WEBHOOK", "description": "Field operations webhook URL" },
+    { "key": "COO_DIGEST_WEBHOOK", "description": "COO digest webhook URL" },
+    { "key": "MEAL_PLAN_WEBHOOK", "description": "Meal plan webhook URL" }
+  ],
+  "steps": [
+    {
+      "name": "FO Checkin",
+      "type": "http",
+      "options": {
+        "method": "POST",
+        "url": "{{variables.FO_CHECKIN_WEBHOOK}}",
+        "body": { "event": "FO_CHECKIN_SMOKE", "dryRun": true }
+      }
+    },
+    {
+      "name": "COO Digest",
+      "type": "http",
+      "options": {
+        "method": "POST",
+        "url": "{{variables.COO_DIGEST_WEBHOOK}}",
+        "body": { "event": "COO_DIGEST_SMOKE", "dryRun": true }
+      }
+    },
+    {
+      "name": "Meal Plan",
+      "type": "http",
+      "options": {
+        "method": "POST",
+        "url": "{{variables.MEAL_PLAN_WEBHOOK}}",
+        "body": { "event": "MEAL_PLAN_SMOKE", "dryRun": true }
+      }
+    }
+  ]
+}

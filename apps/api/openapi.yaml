@@ -1,0 +1,392 @@
+openapi: 3.1.0
+info:
+  title: ExecSuite API
+  version: 0.1.0
+  description: API surface for ExecSuite operations platform.
+servers:
+  - url: https://api.execsuite.example
+components:
+  securitySchemes:
+    AdminToken:
+      type: apiKey
+      in: header
+      name: X-Admin-Token
+  schemas:
+    CheckInRequest:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        accuracyMeters:
+          type: number
+          format: double
+        timestamp:
+          type: string
+          format: date-time
+    CheckInResponse:
+      type: object
+      properties:
+        project:
+          $ref: '#/components/schemas/Project'
+        distanceMeters:
+          type: number
+        dailyLog:
+          $ref: '#/components/schemas/DailyLog'
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        geofenceRadiusMeters:
+          type: number
+    DailyLog:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date
+        projectId:
+          type: string
+        gpsCheckins:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              latitude:
+                type: number
+              longitude:
+                type: number
+              accuracyMeters:
+                type: number
+                nullable: true
+    PlanIngestResponse:
+      type: object
+      properties:
+        planPageId:
+          type: string
+        elements:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExtractedElement'
+    ExtractedElement:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [door, wall, base_cabinet, note, unknown]
+        identifier:
+          type: string
+        sheetRef:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+        verified:
+          type: boolean
+        attributesJson:
+          type: object
+          additionalProperties: true
+        projectId:
+          type: string
+        docHash:
+          type: string
+        elementKey:
+          type: string
+    LookAheadRow:
+      type: object
+      properties:
+        id:
+          type: string
+        weekStartIso:
+          type: string
+        project:
+          type: string
+        task:
+          type: string
+        trade:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        finishDate:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: [planned, committed, at_risk, done]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        scheduleJson:
+          type: object
+          additionalProperties: true
+    GanttRenderRequest:
+      type: object
+      required:
+        - title
+        - weekStartIso
+        - rows
+      properties:
+        title:
+          type: string
+        weekStartIso:
+          type: string
+        persistToConfig:
+          type: boolean
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/LookAheadRow'
+paths:
+  /api/config:
+    get:
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: Current admin configuration
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                featureFlags:
+                  type: object
+                  additionalProperties:
+                    type: boolean
+                urls:
+                  type: object
+                  properties:
+                    ganttPublicUrl:
+                      type: string
+                    dashboardBaseUrl:
+                      type: string
+      responses:
+        '200':
+          description: Updated configuration
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/checkin:
+    post:
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInRequest'
+      responses:
+        '200':
+          description: Successful check-in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInResponse'
+  /api/ingest/plan:
+    post:
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                projectId:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+                notes:
+                  type: string
+          application/json:
+            schema:
+              type: object
+              required:
+                - projectId
+                - filename
+                - fileBase64
+              properties:
+                projectId:
+                  type: string
+                filename:
+                  type: string
+                fileBase64:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Ingest result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanIngestResponse'
+  /api/elements/search:
+    get:
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: projectId
+          schema:
+            type: string
+        - in: query
+          name: q
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching elements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elements:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExtractedElement'
+  /api/lookahead/build:
+    post:
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - weekStartIso
+                - idempotencyKey
+              properties:
+                weekStartIso:
+                  type: string
+                projectId:
+                  type: string
+                idempotencyKey:
+                  type: string
+      responses:
+        '200':
+          description: Generated rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LookAheadRow'
+  /api/gantt/render:
+    post:
+      security:
+        - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GanttRenderRequest'
+      responses:
+        '200':
+          description: Gantt PNG details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  contentType:
+                    type: string
+  /api/telegram/register-commands:
+    post:
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: Commands registered
+  /api/smoke:
+    post:
+      security:
+        - AdminToken: []
+      responses:
+        '200':
+          description: Smoke test results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        ok:
+                          type: boolean
+                        status:
+                          type: integer
+  /api/projects:
+    get:
+      responses:
+        '200':
+          description: All projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'

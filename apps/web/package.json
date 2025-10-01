@@ -1,0 +1,16 @@
+{
+  "name": "@execsuite/web",
+  "version": "0.1.0",
+  "dependencies": {
+    "node": ";"^14",
+    "react": ">=8.0"
+  },
+  "scripts": {
+    "build": "next build",
+    "start": "next start",
+    "dev": "next dev",
+    "lnt": "next lint",
+    "test": "nmp run test"
+  },
+  "license": "MIT"
+}

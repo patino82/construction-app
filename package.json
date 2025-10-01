@@ -1,0 +1,28 @@
+{
+  "name": "execsuite",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.9.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "dev:api": "npm run dev --workspace apps/api",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "npm run format --workspaces --if-present",
+    "e2e": "npm run e2e --workspace apps/web",
+    "seed:notion": "npm run seed:notion --workspace apps/api",
+    "register:telegram": "npm run register:telegram --workspace apps/api",
+    "render:gantt:demo": "npm run render:gantt:demo --workspace apps/api",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "ci": "npm run check && npm run build"
+  }
+}
